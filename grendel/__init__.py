@@ -1,1 +1,1 @@
-from .decgrid import decgrid
+from .Coordinator import Coordinator

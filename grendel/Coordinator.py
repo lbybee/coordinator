@@ -9,7 +9,7 @@ from dask.distributed import Client, LocalCluster
 from labbot.utilities import ACIDlog
 from datetime import datetime as dt
 from functools import wraps
-from joblib import Memory
+import joblib
 import toolz
 import os
 
@@ -31,6 +31,8 @@ class Coordinator(Client):
         location to write cache
     clear : bool
         whether to clear the cache before running
+    verbose : bool
+        whether to get status updates from joblib Memory
     log_file : str
         default locaton to write log
     kwds : dict
@@ -46,10 +48,9 @@ class Coordinator(Client):
         location to write the log
     """
 
-    # TODO handle args
     def __init__(self, cluster=None, cluster_type="local",
                  cluster_kwds={}, n_workers=1, cache_dir=".cache",
-                 clear=False, log_file="coordinator.log", **kwds):
+                 log_file="coordinator.log", **kwds):
 
         # init Cluster
         if cluster_type.lower() == "local":
@@ -72,18 +73,16 @@ class Coordinator(Client):
         self.t0 = dt.now()
         self.log_file = log_file
 
-        # init memory
-        self.memory = Memory(cache_dir, verbose=False)
-        if clear:
-            self.memory.clear()
+        # init cache
+        self.cache_dir = cache_dir
 
         # init Client
         super().__init__(cluster, **kwds)
 
 
-    def map(self, func, *iterables, cache=False, log=False, func_logger=None,
-            serial=False, gather=False, pure=False, testing=0, enum=False,
-            invert=False, **kwds):
+    def map(self, func, *iterables, cache=False, overwrite=False, log=False,
+            func_logger=None, serial=False, gather=False, pure=False,
+            testing=0, enum=False, invert=False, **kwds):
         """map method with additional busy work handled
 
         Parameters
@@ -94,6 +93,8 @@ class Coordinator(Client):
             Iterables, Iterators or Queues
         cache : bool
             whether to cache the function call
+        overwrite : bool
+            whether to overwrite the cache
         log : bool
             whether to log the function call
         func_logger : function or None
@@ -125,7 +126,7 @@ class Coordinator(Client):
 
         # apply decorators
         if cache:
-            func = self.memory.cache(func)
+            func = self.cache(func, self.cache_dir, overwrite)
         if log:
             func = self.log(func, self.t0, self.log_file, func_logger)
 
@@ -137,6 +138,72 @@ class Coordinator(Client):
 
         # run map operation
         return mapfn(func, *iterables, **kwds)
+
+
+    def cache(self, func, cache_dir, overwrite):
+        """memoization decorator for function
+
+        Parameters
+        ----------
+        func : function
+            function to decorate
+        cache_dir : str
+            location where the cache will be written
+        overwrite : bool
+            whether to rewrite the cache (even if it exists)
+
+        Notes
+        -----
+        joblib's caching is too heavy duty and sometimes introduces
+        unecessary complexity/errors.  This is a stripped down version that
+        I understand well.
+        """
+
+        loc = os.path.join(cache_dir, "labbot", func.__module__,
+                           func.__name__)
+        os.makedirs(loc, exist_ok=True)
+
+        @wraps(func)
+        def nfunc(*args, **kwds):
+
+            state = {"args": args,
+                     "kwds": kwds,
+                     "code": inspect.getsource(func)}
+
+            func_hash = joblib.hash(state)
+            hash_dir = os.path.join(loc, func_hash)
+            state_f = os.path.join(hash_dir, "state.pkl")
+            output_f = os.path.join(hash_dir, "output.pkl")
+
+            # if the cache exists, just return that
+            if os.path.exists(output_f) and not overwrite:
+
+                with open(output_f, "rb") as fd:
+                    res = joblib.load(fd)
+
+            # otherwise we need to run the entire function
+            else:
+
+                t0 = dt.now()
+
+                res = func(*args, **kwds)
+
+                os.makedirs(hash_dir, exist_ok=True)
+                t1 = dt.now()
+                state["time"] = t1
+                state["runtime"] = t1 - t0
+                # note we add the function here, instead of above,
+                # because the decoration screws up the hashing
+                state["func"] = func
+
+                with open(state_f, "wb") as fd:
+                    joblib.dump(state, fd)
+                with open(output_f, "wb") as fd:
+                    joblib.dump(res, fd)
+
+            return res
+
+        return nfunc
 
 
     def log(self, func, glob_t0, log_file, func_logger):
