@@ -1,5 +1,5 @@
 from  setuptools import setup, find_packages
 
-setup(name="grendel",
+setup(name="coordinator",
       packages=find_packages()
       )

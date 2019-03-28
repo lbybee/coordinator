@@ -6,8 +6,8 @@ into Python code to handle all the busy work.
 """
 from dask_jobqueue import SLURMCluster, LSFCluster
 from dask.distributed import Client, LocalCluster
-from labbot.utilities import ACIDlog
 from datetime import datetime as dt
+from .utilities import ACIDlog
 from functools import wraps
 import joblib
 import toolz
