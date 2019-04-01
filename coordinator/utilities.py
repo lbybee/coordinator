@@ -2,7 +2,9 @@
 helper code
 """
 from filelock import FileLock
+import smtplib
 import logging
+import yaml
 import os
 
 
@@ -43,3 +45,22 @@ def ACIDlog(msg, fname, mode="a", timeout=60, lock_log_lvl=logging.WARNING):
         with open(fname, mode) as handle:
             handle.write(log_entry)
     lock.release()
+
+
+def send_email(func, log, config_file, *args, **kwds):
+    """internal function for sending log updates to a specified email"""
+
+    with open(config_file, "r") as fd:
+        config = yaml.load(fd)
+
+    message = ("From: %s <%s> \n"
+               "%s \n"
+               "%s") % (func.__name__, config["femail"], log,
+                        str((args, kwds)))
+
+    server = smtplib.SMTP("smtp.gmail.com", 587)
+    server.starttls()
+    server.login(config["femail"], config["password"])
+
+    server.sendmail(config["femail"], config["temail"], message)
+    server.quit()

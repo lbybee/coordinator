@@ -6,9 +6,11 @@ into Python code to handle all the busy work.
 """
 from dask_jobqueue import SLURMCluster, LSFCluster
 from dask.distributed import Client, LocalCluster
+from .utilities import ACIDlog, send_email
 from datetime import datetime as dt
-from .utilities import ACIDlog
 from functools import wraps
+import logging
+import inspect
 import joblib
 import toolz
 import os
@@ -35,6 +37,8 @@ class Coordinator(Client):
         whether to get status updates from joblib Memory
     log_file : str
         default locaton to write log
+    email_config_f : str
+        config location for email log
     kwds : dict
         additional key-words to initialize Client.
 
@@ -48,9 +52,11 @@ class Coordinator(Client):
         location to write the log
     """
 
-    def __init__(self, cluster=None, cluster_type="local",
-                 cluster_kwds={}, n_workers=1, cache_dir=".cache",
-                 log_file="coordinator.log", **kwds):
+   def __init__(self, cluster=None, cluster_type="local",
+                cluster_kwds={"silence_logs": logging.ERROR}, n_workers=1,
+                cache_dir=".cache", log_file="coordinator.log",
+                email_config_f="~/passepartout/files/config/emaildec.yaml",
+                **kwds):
 
         # init Cluster
         if cluster_type.lower() == "local":
@@ -73,6 +79,9 @@ class Coordinator(Client):
         self.t0 = dt.now()
         self.log_file = log_file
 
+        # init email
+        self.email_config_f = email_config_f
+
         # init cache
         self.cache_dir = cache_dir
 
@@ -81,8 +90,8 @@ class Coordinator(Client):
 
 
     def map(self, func, *iterables, cache=False, overwrite=False, log=False,
-            func_logger=None, serial=False, gather=False, pure=False,
-            testing=0, enum=False, invert=False, **kwds):
+            func_logger=None, email=False, serial=False, gather=False,
+            pure=False, testing=0, enum=False, invert=False, **kwds):
         """map method with additional busy work handled
 
         Parameters
@@ -102,6 +111,8 @@ class Coordinator(Client):
             which takes the same args/kwds as func but returns
             an additional message (based on these args/kwds) which
             can be added to the log message
+        email : bool
+            whether to send emails on internal failures
         serial : bool
             whether the map operation should use the default Python map
         gather : bool
@@ -129,6 +140,8 @@ class Coordinator(Client):
             func = self.cache(func, self.cache_dir, overwrite)
         if log:
             func = self.log(func, self.t0, self.log_file, func_logger)
+        if email:
+            func = self.emailerror(func, self.email_config_f)
 
         # select mapfn
         mapfn = self.selectmap(serial, gather, pure)
@@ -254,6 +267,39 @@ class Coordinator(Client):
             msg = "{0} {1}      {2} glob runtime: {3} func runtime: {4}"
             msg = msg.format(t1, func_name, add_msg, func_tdiff, glob_tdiff)
             ACIDlog(msg, log_file)
+
+            return res
+
+        return nfunc
+
+
+    def emailerror(self, func, email_config_f):
+        """sends an email with the error log
+
+        Parameters
+        ----------
+        func : function
+            function to decorate
+        email_config_f : str
+            location of email config file
+
+        Returns
+        -------
+        func : function
+            decorated to support email logs
+        """
+
+        @wraps(func)
+        def nfunc(*args, **kwds):
+
+            cf = os.path.expanduser(email_config_f)
+
+            try:
+                res = func(*args, **kwds)
+            except Exception as e:
+                send_email(func, "failed with error %s" % str(e),
+                           cf, *args, **kwds)
+                raise e
 
             return res
 
