@@ -7,8 +7,8 @@ into Python code to handle all the busy work.
 from dask_jobqueue import SLURMCluster, LSFCluster
 from dask.distributed import Client, LocalCluster
 from .utilities import ACIDlog, send_email
+from functools import wraps, partial
 from datetime import datetime as dt
-from functools import wraps
 import logging
 import inspect
 import joblib
@@ -52,11 +52,11 @@ class Coordinator(Client):
         location to write the log
     """
 
-   def __init__(self, cluster=None, cluster_type="local",
-                cluster_kwds={"silence_logs": logging.ERROR}, n_workers=1,
-                cache_dir=".cache", log_file="coordinator.log",
-                email_config_f="~/passepartout/files/config/emaildec.yaml",
-                **kwds):
+    def __init__(self, cluster=None, cluster_type="local",
+                 cluster_kwds={"silence_logs": logging.ERROR}, n_workers=1,
+                 cache_dir=".cache", log_file="coordinator.log",
+                 email_config_f="~/passepartout/files/config/emaildec.yaml",
+                 **kwds):
 
         # init Cluster
         if cluster_type.lower() == "local":
@@ -325,7 +325,7 @@ class Coordinator(Client):
         """
 
         if serial:
-            mapfn = map
+            return lambda f, *i, **k: list(map(partial(f, **k), *i))
         else:
             mapfn = super().map
 
