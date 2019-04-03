@@ -89,9 +89,10 @@ class Coordinator(Client):
         super().__init__(cluster, **kwds)
 
 
-    def map(self, func, *iterables, cache=False, overwrite=False, log=False,
-            func_logger=None, email=False, serial=False, gather=False,
-            pure=False, testing=0, enum=False, invert=False, **kwds):
+    def map(self, func, *iterables, cache=False, overwrite=False,
+            store_input=True, log=False, func_logger=None, email=False,
+            serial=False, gather=False, pure=False, testing=0, enum=False,
+            invert=False, **kwds):
         """map method with additional busy work handled
 
         Parameters
@@ -104,6 +105,8 @@ class Coordinator(Client):
             whether to cache the function call
         overwrite : bool
             whether to overwrite the cache
+        store_input : bool
+            whether to store the full input when caching
         log : bool
             whether to log the function call
         func_logger : function or None
@@ -137,7 +140,7 @@ class Coordinator(Client):
 
         # apply decorators
         if cache:
-            func = self.cache(func, self.cache_dir, overwrite)
+            func = self.cache(func, self.cache_dir, overwrite, store_input)
         if log:
             func = self.log(func, self.t0, self.log_file, func_logger)
         if email:
@@ -153,7 +156,7 @@ class Coordinator(Client):
         return mapfn(func, *iterables, **kwds)
 
 
-    def cache(self, func, cache_dir, overwrite):
+    def cache(self, func, cache_dir, overwrite, store_input):
         """memoization decorator for function
 
         Parameters
@@ -163,7 +166,10 @@ class Coordinator(Client):
         cache_dir : str
             location where the cache will be written
         overwrite : bool
-            whether to rewrite the cache (even if it exists)
+            whether to rewrite the cache (even if it exists
+        store_input : bool
+            whether to store the full input
+            (turn this off for large input which won't be reused)
 
         Notes
         -----
@@ -179,9 +185,12 @@ class Coordinator(Client):
         @wraps(func)
         def nfunc(*args, **kwds):
 
-            state = {"args": args,
-                     "kwds": kwds,
-                     "code": inspect.getsource(func)}
+            if store_input:
+                state = {"args": args,
+                         "kwds": kwds,
+                         "code": inspect.getsource(func)}
+            else:
+                state = {"code": inspect.getsource(func)}
 
             func_hash = joblib.hash(state)
             hash_dir = os.path.join(loc, func_hash)
