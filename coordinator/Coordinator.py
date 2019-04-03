@@ -185,10 +185,9 @@ class Coordinator(Client):
         @wraps(func)
         def nfunc(*args, **kwds):
 
-            if store_input:
-                state = {"args": args,
-                         "kwds": kwds,
-                         "code": inspect.getsource(func)}
+            state = {"args": args,
+                     "kwds": kwds,
+                     "code": inspect.getsource(func)}
 
             func_hash = joblib.hash(state)
             hash_dir = os.path.join(loc, func_hash)
