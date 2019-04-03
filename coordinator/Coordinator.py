@@ -189,13 +189,16 @@ class Coordinator(Client):
                 state = {"args": args,
                          "kwds": kwds,
                          "code": inspect.getsource(func)}
-            else:
-                state = {"code": inspect.getsource(func)}
 
             func_hash = joblib.hash(state)
             hash_dir = os.path.join(loc, func_hash)
             state_f = os.path.join(hash_dir, "state.pkl")
             output_f = os.path.join(hash_dir, "output.pkl")
+
+            # if we don't want to store the input remove from state
+            if not store_input:
+                state.pop("args")
+                state.pop("kwds")
 
             # if the cache exists, just return that
             if os.path.exists(output_f) and not overwrite:
