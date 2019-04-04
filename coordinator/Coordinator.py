@@ -73,6 +73,7 @@ class Coordinator(Client):
         if not cluster:
             cluster = Cluster(**cluster_kwds)
         if cluster_type.lower() != "local":
+            print(n_workers)
             cluster.scale(n_workers)
 
         # init logger inputs
@@ -276,7 +277,7 @@ class Coordinator(Client):
 
             # log message
             msg = "{0} {1}      {2} glob runtime: {3} func runtime: {4}"
-            msg = msg.format(t1, func_name, add_msg, func_tdiff, glob_tdiff)
+            msg = msg.format(t1, func_name, add_msg, glob_tdiff, func_tdiff)
             ACIDlog(msg, log_file)
 
             return res
