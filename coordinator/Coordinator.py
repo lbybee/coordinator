@@ -257,11 +257,6 @@ class Coordinator(Client):
         @wraps(func)
         def nfunc(*args, **kwds):
 
-            # prep func_logger message
-            if func_logger:
-                add_msg = func_logger(*args, **kwds)
-            else:
-                add_msg = ""
 
             # prep variables for log
             func_name = func.__name__
@@ -274,6 +269,12 @@ class Coordinator(Client):
             t1 = dt.now()
             glob_tdiff = str(t1 - glob_t0)
             func_tdiff = str(t1 - func_t0)
+
+            # prep func_logger message
+            if func_logger:
+                add_msg = func_logger(res)
+            else:
+                add_msg = ""
 
             # log message
             msg = "{0} {1}      {2} glob runtime: {3} func runtime: {4}"
