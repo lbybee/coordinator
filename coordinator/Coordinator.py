@@ -96,8 +96,6 @@ class Coordinator(Client):
             running_workers = 0
             while running_workers < n_workers:
                 running_workers = len(self.scheduler_info()["workers"])
-                with open("running_workers.log", "a") as fd:
-                    fd.write("%d\n" % running_workers)
                 time.sleep(60)
 
 
