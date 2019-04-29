@@ -13,6 +13,7 @@ import logging
 import inspect
 import joblib
 import toolz
+import time
 import os
 
 
@@ -29,6 +30,8 @@ class Coordinator(Client):
         key words to initiate cluster
     n_workers : scalar
         number of workers for cluster scale
+    wait : bool
+        whether to wait for workers to scale before finishing init
     cache_dir : str
         location to write cache
     clear : bool
@@ -54,7 +57,7 @@ class Coordinator(Client):
 
     def __init__(self, cluster=None, cluster_type="local",
                  cluster_kwds={"silence_logs": logging.ERROR}, n_workers=1,
-                 cache_dir=".cache", log_file="coordinator.log",
+                 wait=True, cache_dir=".cache", log_file="coordinator.log",
                  email_config_f="~/passepartout/files/config/emaildec.yaml",
                  **kwds):
 
@@ -73,7 +76,6 @@ class Coordinator(Client):
         if not cluster:
             cluster = Cluster(**cluster_kwds)
         if cluster_type.lower() != "local":
-            print(n_workers)
             cluster.scale(n_workers)
 
         # init logger inputs
@@ -88,6 +90,16 @@ class Coordinator(Client):
 
         # init Client
         super().__init__(cluster, **kwds)
+
+        # wait for workers
+        if wait:
+            running_workers = 0
+            while running_workers < n_workers:
+                running_workers = len(self.scheduler_info()["workers"])
+                with open("running_workers.log", "a") as fd:
+                    fd.write("%d\n" % running_workers)
+                time.sleep(60)
+
 
 
     def map(self, func, *iterables, cache=False, overwrite=False,
@@ -179,7 +191,7 @@ class Coordinator(Client):
         I understand well.
         """
 
-        loc = os.path.join(cache_dir, "labbot", func.__module__,
+        loc = os.path.join(cache_dir, ".labbot", func.__module__,
                            func.__name__)
         os.makedirs(loc, exist_ok=True)
 
