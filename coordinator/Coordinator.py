@@ -189,8 +189,7 @@ class Coordinator(Client):
         I understand well.
         """
 
-        loc = os.path.join(cache_dir, ".labbot", func.__module__,
-                           func.__name__)
+        loc = os.path.join(cache_dir, ".labbot", func.__name__)
         os.makedirs(loc, exist_ok=True)
 
         @wraps(func)
