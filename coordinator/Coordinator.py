@@ -57,7 +57,7 @@ class Coordinator(Client):
 
     def __init__(self, cluster=None, cluster_type="local",
                  cluster_kwds={"silence_logs": logging.ERROR}, n_workers=1,
-                 wait=True, cache_dir=".cache", log_file="coordinator.log",
+                 wait=False, cache_dir=".cache", log_file="coordinator.log",
                  email_config_f="~/passepartout/files/config/emaildec.yaml",
                  **kwds):
 
