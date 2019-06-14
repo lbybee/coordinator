@@ -196,8 +196,7 @@ class Coordinator(Client):
         def nfunc(*args, **kwds):
 
             state = {"args": args,
-                     "kwds": kwds,
-                     "code": inspect.getsource(func)}
+                     "kwds": kwds}
 
             func_hash = joblib.hash(state)
             hash_dir = os.path.join(loc, func_hash)
