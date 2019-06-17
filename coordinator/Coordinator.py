@@ -97,6 +97,25 @@ class Coordinator(Client):
             self.wait_for_workers(n_workers=n_workers)
 
 
+    @gen.coroutine
+    def _wait_for_workers(self, n_workers=0):
+        c_workers = yield len(self.scheduler_info()["workers"])
+        while n_workers and c_workers < n_workers:
+            yield gen.sleep(0.1)
+
+
+    def wait_for_workers(self, n_workers=0):
+        """Blocking call to wait for n_workers before continuing
+
+        Notes
+        -----
+        This is taken directly from the current distributed code
+        because my cluster is having issues
+        """
+
+        return self.sync(self._wait_for_workers, n_workers)
+
+
     def map(self, func, *iterables, cache=False, overwrite=False,
             store_input=True, log=False, func_logger=None, email=False,
             serial=False, gather=False, pure=False, testing=0, enum=False,
@@ -398,5 +417,6 @@ class Coordinator(Client):
     def close(self):
         """close the client and cluster"""
 
+        self.cluster.scheduler.close()
         self.cluster.close()
         super().close()
