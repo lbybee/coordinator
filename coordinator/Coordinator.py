@@ -93,11 +93,7 @@ class Coordinator(Client):
 
         # wait for workers
         if wait:
-            running_workers = 0
-            while running_workers < n_workers:
-                running_workers = len(self.scheduler_info()["workers"])
-                time.sleep(60)
-
+            self.wait_for_workers(n_workers=n_workers)
 
 
     def map(self, func, *iterables, cache=False, overwrite=False,
@@ -396,3 +392,9 @@ class Coordinator(Client):
             iterables = (invertd(i) for i in iterables)
 
         return iterables
+
+    def close(self):
+        """close the client and cluster"""
+
+        self.cluster.close()
+        super().close()
