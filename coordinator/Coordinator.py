@@ -102,10 +102,10 @@ class Coordinator(Client):
 
     @gen.coroutine
     def _wait_for_workers(self, n_workers=0):
-        info = yield super().scheduler.identity()
+        info = yield self.scheduler_info()
         while n_workers and len(info["workers"]) < n_workers:
             yield gen.sleep(0.1)
-            info = yield super().scheduler.identity()
+            info = yield self.scheduler_info()
 
 
     def wait_for_workers(self, n_workers=0):
