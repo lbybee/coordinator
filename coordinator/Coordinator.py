@@ -9,6 +9,7 @@ from dask.distributed import Client, LocalCluster
 from .utilities import ACIDlog, send_email
 from functools import wraps, partial
 from datetime import datetime as dt
+from tornado import gen
 import logging
 import inspect
 import joblib
@@ -92,8 +93,25 @@ class Coordinator(Client):
         super().__init__(cluster, **kwds)
 
         # wait for workers
+        # TODO this is just the distributed wait_for_workers method
+        # it is here because distributed isn't installing properly on
+        # Grace, should be removed eventually...
         if wait:
-            super().wait_for_workers(n_workers=n_workers)
+            self.wait_for_workers(n_workers=n_workers)
+
+
+    @gen.coroutine
+    def _wait_for_workers(self, n_workers=0):
+        info = yield super().scheduler.identity()
+        while n_workers and len(info["workers"]) < n_workers:
+            yield gen.sleep(0.1)
+            info = yield super().scheduler.identity()
+
+
+    def wait_for_workers(self, n_workers=0):
+        """Blocking call to wait for n workers before continuing"""
+
+        return super().sync(self._wait_for_workers, n_workers)
 
 
     def map(self, func, *iterables, cache=False, overwrite=False,
