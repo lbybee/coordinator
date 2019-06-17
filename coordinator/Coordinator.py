@@ -93,7 +93,7 @@ class Coordinator(Client):
 
         # wait for workers
         if wait:
-            self.wait_for_workers(n_workers=n_workers)
+            super().wait_for_workers(n_workers=n_workers)
 
 
     def map(self, func, *iterables, cache=False, overwrite=False,
