@@ -97,13 +97,13 @@ class Coordinator(Client):
             self.wait_for_workers(n_workers=n_workers)
 
 
-
     # TODO remove, this is temporary since the clusters are running
     # an older version of Python
     @gen.coroutine
     def _wait_for_workers(self, n_workers=0):
         info = yield self.scheduler.identity()
         while n_workers and len(info["workers"]) < n_workers:
+            print(info["workers"])
             yield gen.sleep(0.1)
             info = yield self.scheduler.identity()
 
