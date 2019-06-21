@@ -103,7 +103,6 @@ class Coordinator(Client):
     def _wait_for_workers(self, n_workers=0):
         info = yield self.scheduler.identity()
         while n_workers and len(info["workers"]) < n_workers:
-            print(info["workers"])
             yield gen.sleep(0.1)
             info = yield self.scheduler.identity()
 
