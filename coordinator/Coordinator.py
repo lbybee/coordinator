@@ -4,6 +4,7 @@ distributed, "big-data" jobs.  The Coordinator class defined here tries
 to pull some of these various tools into one object which can be dropped
 into Python code to handle all the busy work.
 """
+from dask.distributed.deploy.ssh2 import SSHCluster
 from dask_jobqueue import SLURMCluster, LSFCluster
 from dask.distributed import Client, LocalCluster
 from .utilities import ACIDlog, send_email
@@ -62,13 +63,18 @@ class Coordinator(Client):
                  email_config_f="~/passepartout/files/config/emaildec.yaml",
                  **kwds):
 
+        # get lowercase cluster type
+        cluster_type = cluster_type.lower()
+
         # init Cluster
-        if cluster_type.lower() == "local":
+        if cluster_type == "local":
             Cluster = LocalCluster
             cluster_kwds["n_workers"] = n_workers
-        elif cluster_type.lower() == "slurm":
+        elif cluster_type == "ssh":
+            Cluster = SSHCluster
+        elif cluster_type == "slurm":
             Cluster = SLURMCluster
-        elif cluster_type.lower() == "lsf":
+        elif cluster_type == "lsf":
             Cluster = LSFCluster
         else:
             raise ValueError("Currently unsupported cluster_type: %s" %
@@ -76,7 +82,7 @@ class Coordinator(Client):
 
         if not cluster:
             cluster = Cluster(**cluster_kwds)
-        if cluster_type.lower() != "local":
+        if cluster_type != "local" and cluster_type != "ssh":
             cluster.scale(n_workers)
 
         # init logger inputs
@@ -105,6 +111,7 @@ class Coordinator(Client):
         while n_workers and len(info["workers"]) < n_workers:
             yield gen.sleep(0.1)
             info = yield self.scheduler.identity()
+
 
     def wait_for_workers(self, n_workers=0):
         """Blocking call to wait for n workers before continuing"""
