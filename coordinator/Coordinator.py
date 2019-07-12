@@ -4,8 +4,8 @@ distributed, "big-data" jobs.  The Coordinator class defined here tries
 to pull some of these various tools into one object which can be dropped
 into Python code to handle all the busy work.
 """
-from dask.distributed.deploy.ssh2 import SSHCluster
 from dask_jobqueue import SLURMCluster, LSFCluster
+from dask.distributed.deploy.ssh import SSHCluster
 from dask.distributed import Client, LocalCluster
 from .utilities import ACIDlog, send_email
 from functools import wraps, partial
