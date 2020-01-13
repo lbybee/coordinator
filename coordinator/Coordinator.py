@@ -416,9 +416,9 @@ class Coordinator(Client):
         return iterables
 
 
-    def close(self):
+    def close(self, **kwargs):
         """close the client and cluster"""
 
-        self.cluster.scheduler.close()
-        self.cluster.close()
-        super().close()
+        self.cluster.scheduler.close(**kwargs)
+        self.cluster.close(**kwargs)
+        super().close(**kwargs)
